@@ -9,7 +9,9 @@
     "dev:backend": "convex dev",
     "build": "vite build",
     "start": "npx serve -s dist",
-    "lint": "tsc -p convex -noEmit --pretty false && tsc -p . -noEmit --pretty false && convex dev --once && vite build"
+    "lint": "tsc -p convex -noEmit --pretty false && tsc -p . -noEmit --pretty false && convex dev --once && vite build",
+    "deploy-backend": "convex deploy",
+    "generate-jwks": "convex env set JWKS $(node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\")"
   },
   "dependencies": {
     "@convex-dev/auth": "^0.0.80",
