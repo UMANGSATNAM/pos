@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(where npm.cmd)",
+      "Bash(where npm *)",
+      "Bash(where node *)",
+      "Read(//c/Program Files/**)",
+      "Bash(where npx.cmd)",
+      "Bash(where npx *)",
+      "Bash(powershell.exe -NoProfile -Command \"Get-Command node -ErrorAction SilentlyContinue | Select-Object Source; Get-Command npm -ErrorAction SilentlyContinue | Select-Object Source\")",
+      "Bash(cmd.exe //c \"where node & where npm & echo ---PATH--- & echo %PATH%\")",
+      "Bash(code-review-graph install *)",
+      "Bash(\"/c/Program Files/nodejs/npx.cmd\" --yes code-review-graph install --platform claude-code)",
+      "Bash(where python.exe)",
+      "Bash(where py.exe)",
+      "Bash(where pip.exe)",
+      "Bash(where pipx.exe)",
+      "Bash(py -V)",
+      "Bash(py -m pip --version)",
+      "Bash(py -m pip install --user code-review-graph)",
+      "Bash(py -m pip show code-review-graph)",
+      "Bash(py -m code_review_graph install --platform claude-code)",
+      "Bash(py -m code_review_graph install --help)",
+      "Bash(py -m code_review_graph install --platform claude-code --repo \"C:\\\\Users\\\\onwer\\\\Desktop\\\\pos\" -y)",
+      "Bash(py -m code_review_graph build --repo \"C:\\\\Users\\\\onwer\\\\Desktop\\\\pos\")",
+      "Bash(\"/c/Program Files/nodejs/npx.cmd\" convex deploy)",
+      "Bash(export PATH=\"/c/Program Files/nodejs:$PATH\")",
+      "Bash(npx.cmd convex *)"
+    ]
+  }
+}
