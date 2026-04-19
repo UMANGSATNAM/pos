@@ -36,7 +36,7 @@ const applicationTables = {
     .index("by_category", ["categoryId"])
     .index("by_active", ["isActive"])
     .index("by_barcode", ["barcode"])
-    .searchIndex("search_products", { searchField: "name" }),
+    .searchIndex("search_products", { searchField: "name", filterFields: ["userId"] }),
 
   customers: defineTable({
     userId: v.id("users"),
@@ -52,7 +52,7 @@ const applicationTables = {
   })
     .index("by_user", ["userId"])
     .index("by_mobile", ["userId", "mobile"])
-    .searchIndex("search_customers", { searchField: "name" }),
+    .searchIndex("search_customers", { searchField: "name", filterFields: ["userId"] }),
 
   sales: defineTable({
     userId: v.id("users"),
