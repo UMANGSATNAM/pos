@@ -25,10 +25,12 @@ interface ReceiptData {
 
 interface PrintReceiptProps {
   receipt: ReceiptData;
+  shopName: string;
+  gstNumber?: string;
   onClose: () => void;
 }
 
-export function PrintReceipt({ receipt, onClose }: PrintReceiptProps) {
+export function PrintReceipt({ receipt, shopName, gstNumber, onClose }: PrintReceiptProps) {
   const printRef = useRef<HTMLDivElement>(null);
 
   function handlePrint() {
@@ -91,8 +93,8 @@ export function PrintReceipt({ receipt, onClose }: PrintReceiptProps) {
           <div ref={printRef} className="receipt bg-white font-mono text-xs" style={{ fontFamily: "'Courier New', monospace" }}>
             {/* Store Header */}
             <div className="center" style={{ textAlign: "center", marginBottom: "8px" }}>
-              <div className="xlarge bold" style={{ fontSize: "18px", fontWeight: "bold" }}>{BRAND.receiptEmoji} {BRAND.name.toUpperCase()}</div>
-              <div style={{ fontSize: "11px", color: "#555" }}>{BRAND.shortTagline}</div>
+              <div className="xlarge bold" style={{ fontSize: "18px", fontWeight: "bold" }}>{BRAND.receiptEmoji} {shopName.toUpperCase()}</div>
+              {gstNumber && <div style={{ fontSize: "11px", color: "#555" }}>GSTIN: {gstNumber}</div>}
               <div style={{ fontSize: "10px", color: "#777", marginTop: "2px" }}>Thank you for shopping with us!</div>
             </div>
 
@@ -157,7 +159,7 @@ export function PrintReceipt({ receipt, onClose }: PrintReceiptProps) {
             )}
             {receipt.taxAmount > 0 && (
               <div className="row" style={{ display: "flex", justifyContent: "space-between", margin: "2px 0" }}>
-                <span>GST (18%)</span><span>₹{receipt.taxAmount.toFixed(2)}</span>
+                <span>GST Tax</span><span>₹{receipt.taxAmount.toFixed(2)}</span>
               </div>
             )}
 

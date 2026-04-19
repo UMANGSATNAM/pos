@@ -5,8 +5,11 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 export const list = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
     const sales = await ctx.db
       .query("sales")
+      .withIndex("by_user", q => q.eq("userId", userId))
       .order("desc")
       .take(args.limit ?? 50);
     return sales;
@@ -16,11 +19,13 @@ export const list = query({
 export const get = query({
   args: { id: v.id("sales") },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
     const sale = await ctx.db.get(args.id);
-    if (!sale) return null;
+    if (!sale || sale.userId !== userId) return null;
     const items = await ctx.db
       .query("saleItems")
       .withIndex("by_sale", (q) => q.eq("saleId", args.id))
+      .filter((q) => q.eq(q.field("userId"), userId))
       .collect();
     return { ...sale, items };
   },
@@ -29,11 +34,13 @@ export const get = query({
 export const todaySummary = query({
   args: {},
   handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return { totalRevenue: 0, totalTransactions: 0, avgTransaction: 0, sales: [] };
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
     const sales = await ctx.db
       .query("sales")
-      .withIndex("by_status", (q) => q.eq("status", "completed"))
+      .withIndex("by_status", (q) => q.eq("userId", userId).eq("status", "completed"))
       .collect();
     const todaySales = sales.filter((s) => s._creationTime >= startOfDay.getTime());
     const totalRevenue = todaySales.reduce((sum, s) => sum + s.total, 0);
@@ -71,10 +78,12 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    const count = await ctx.db.query("sales").collect();
+    if (!userId) throw new Error("Unauthorized");
+    const count = await ctx.db.query("sales").withIndex("by_user", q => q.eq("userId", userId)).collect();
     const invoiceNumber = `INV-${String(count.length + 1).padStart(5, "0")}`;
 
     const saleId = await ctx.db.insert("sales", {
+      userId,
       invoiceNumber,
       subtotal: args.subtotal,
       discount: args.discount,
@@ -93,7 +102,7 @@ export const create = mutation({
     });
 
     for (const item of args.items) {
-      await ctx.db.insert("saleItems", { saleId, ...item });
+      await ctx.db.insert("saleItems", { userId, saleId, ...item });
       const product = await ctx.db.get(item.productId);
       if (product) {
         await ctx.db.patch(item.productId, {
@@ -123,12 +132,14 @@ export const create = mutation({
 export const voidSale = mutation({
   args: { id: v.id("sales") },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
     const sale = await ctx.db.get(args.id);
-    if (!sale) throw new Error("Sale not found");
+    if (!sale || sale.userId !== userId) throw new Error("Sale not found");
     await ctx.db.patch(args.id, { status: "voided" });
     const items = await ctx.db
       .query("saleItems")
       .withIndex("by_sale", (q) => q.eq("saleId", args.id))
+      .filter(q => q.eq(q.field("userId"), userId))
       .collect();
     for (const item of items) {
       const product = await ctx.db.get(item.productId);

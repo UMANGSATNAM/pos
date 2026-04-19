@@ -1,32 +1,41 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("categories").collect();
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
+    return await ctx.db.query("categories").withIndex("by_user", q => q.eq("userId", userId)).collect();
   },
 });
 
 export const create = mutation({
   args: { name: v.string(), color: v.string() },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("categories", { name: args.name, color: args.color });
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
+    return await ctx.db.insert("categories", { name: args.name, color: args.color, userId });
   },
 });
 
 export const remove = mutation({
   args: { id: v.id("categories") },
   handler: async (ctx, args) => {
-    await ctx.db.delete(args.id);
+    const userId = await getAuthUserId(ctx);
+    const cat = await ctx.db.get(args.id);
+    if (cat?.userId === userId) await ctx.db.delete(args.id);
   },
 });
 
 export const seed = mutation({
   args: {},
   handler: async (ctx) => {
-    const existing = await ctx.db.query("categories").collect();
-    if (existing.length > 0) return;
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return;
+    const existing = await ctx.db.query("categories").withIndex("by_user", q => q.eq("userId", userId)).first();
+    if (existing) return;
     const cats = [
       { name: "Beverages", color: "#3B82F6" },
       { name: "Snacks", color: "#F59E0B" },
@@ -38,7 +47,7 @@ export const seed = mutation({
       { name: "Produce", color: "#84CC16" },
     ];
     for (const cat of cats) {
-      await ctx.db.insert("categories", cat);
+      await ctx.db.insert("categories", { ...cat, userId });
     }
   },
 });

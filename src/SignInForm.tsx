@@ -18,16 +18,19 @@ export function SignInForm() {
           const formData = new FormData(e.target as HTMLFormElement);
           formData.set("flow", flow);
           void signIn("password", formData).catch((error) => {
-            let toastTitle = "";
-            if (error.message.includes("Invalid password")) {
-              toastTitle = "Invalid password. Please try again.";
-            } else {
-              toastTitle =
-                flow === "signIn"
-                  ? "Could not sign in, did you mean to sign up?"
-                  : "Could not sign up, did you mean to sign in?";
+            console.error("Auth error:", error);
+            const msg = error?.message || error?.toString() || "Unknown authentication error";
+            let displayMsg = msg;
+            
+            if (msg.includes("Invalid password") || msg.includes("credentials")) {
+              displayMsg = "Invalid email or password.";
+            } else if (msg.includes("already exists") || msg.includes("already registered")) {
+              displayMsg = "This email is already registered. Please sign in instead.";
+            } else if (msg.includes("User not found")) {
+              displayMsg = "Account not found. Please sign up instead.";
             }
-            toast.error(toastTitle);
+            
+            toast.error(displayMsg);
             setSubmitting(false);
           });
         }}

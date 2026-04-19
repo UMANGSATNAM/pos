@@ -1,22 +1,26 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
 export const list = query({
   args: { categoryId: v.optional(v.id("categories")), activeOnly: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
     let products;
     if (args.categoryId) {
       products = await ctx.db
         .query("products")
         .withIndex("by_category", (q) => q.eq("categoryId", args.categoryId))
+        .filter((q) => q.eq(q.field("userId"), userId))
         .collect();
     } else {
-      products = await ctx.db.query("products").collect();
+      products = await ctx.db.query("products").withIndex("by_user", q => q.eq("userId", userId)).collect();
     }
     if (args.activeOnly) {
       products = products.filter((p) => p.isActive);
     }
-    const categories = await ctx.db.query("categories").collect();
+    const categories = await ctx.db.query("categories").withIndex("by_user", q => q.eq("userId", userId)).collect();
     const catMap = Object.fromEntries(categories.map((c) => [c._id, c]));
     return products.map((p) => ({
       ...p,
@@ -28,17 +32,19 @@ export const list = query({
 export const search = query({
   args: { query: v.string() },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
     if (!args.query.trim()) {
-      const products = await ctx.db.query("products").withIndex("by_active", (q) => q.eq("isActive", true)).collect();
-      const categories = await ctx.db.query("categories").collect();
+      const products = await ctx.db.query("products").withIndex("by_user", q => q.eq("userId", userId)).filter((q) => q.eq(q.field("isActive"), true)).collect();
+      const categories = await ctx.db.query("categories").withIndex("by_user", q => q.eq("userId", userId)).collect();
       const catMap = Object.fromEntries(categories.map((c) => [c._id, c]));
       return products.slice(0, 20).map((p) => ({ ...p, category: p.categoryId ? catMap[p.categoryId] : null }));
     }
     const results = await ctx.db
       .query("products")
-      .withSearchIndex("search_products", (q) => q.search("name", args.query))
+      .withSearchIndex("search_products", (q) => q.search("name", args.query).eq("userId", userId))
       .take(20);
-    const categories = await ctx.db.query("categories").collect();
+    const categories = await ctx.db.query("categories").withIndex("by_user", q => q.eq("userId", userId)).collect();
     const catMap = Object.fromEntries(categories.map((c) => [c._id, c]));
     return results.filter((p) => p.isActive).map((p) => ({ ...p, category: p.categoryId ? catMap[p.categoryId] : null }));
   },
@@ -47,17 +53,22 @@ export const search = query({
 export const get = query({
   args: { id: v.id("products") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    const userId = await getAuthUserId(ctx);
+    const p = await ctx.db.get(args.id);
+    return (p?.userId === userId) ? p : null;
   },
 });
 
 export const getByBarcode = query({
   args: { barcode: v.string() },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
     const product = await ctx.db
       .query("products")
       .withIndex("by_barcode", (q) => q.eq("barcode", args.barcode))
-      .unique();
+      .filter((q) => q.eq(q.field("userId"), userId))
+      .first();
     if (!product) return null;
     const category = product.categoryId ? await ctx.db.get(product.categoryId) : null;
     return { ...product, category };
@@ -76,7 +87,9 @@ export const create = mutation({
     barcode: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("products", { ...args, isActive: true });
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
+    return await ctx.db.insert("products", { ...args, isActive: true, userId });
   },
 });
 
@@ -94,16 +107,19 @@ export const update = mutation({
     isActive: v.boolean(),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
     const { id, ...rest } = args;
-    await ctx.db.patch(id, rest);
+    const p = await ctx.db.get(id);
+    if (p?.userId === userId) await ctx.db.patch(id, rest);
   },
 });
 
 export const adjustStock = mutation({
   args: { id: v.id("products"), delta: v.number() },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
     const product = await ctx.db.get(args.id);
-    if (!product) throw new Error("Product not found");
+    if (!product || product.userId !== userId) throw new Error("Product not found");
     await ctx.db.patch(args.id, { stock: Math.max(0, product.stock + args.delta) });
   },
 });
@@ -111,16 +127,20 @@ export const adjustStock = mutation({
 export const remove = mutation({
   args: { id: v.id("products") },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.id, { isActive: false });
+    const userId = await getAuthUserId(ctx);
+    const p = await ctx.db.get(args.id);
+    if (p?.userId === userId) await ctx.db.patch(args.id, { isActive: false });
   },
 });
 
 export const seed = mutation({
   args: {},
   handler: async (ctx) => {
-    const existing = await ctx.db.query("products").collect();
-    if (existing.length > 0) return;
-    const categories = await ctx.db.query("categories").collect();
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return;
+    const existing = await ctx.db.query("products").withIndex("by_user", q => q.eq("userId", userId)).first();
+    if (existing) return;
+    const categories = await ctx.db.query("categories").withIndex("by_user", q => q.eq("userId", userId)).collect();
     const catMap = Object.fromEntries(categories.map((c) => [c.name, c._id]));
 
     const items = [
@@ -149,7 +169,7 @@ export const seed = mutation({
     ];
 
     for (const item of items) {
-      await ctx.db.insert("products", { ...item, isActive: true });
+      await ctx.db.insert("products", { ...item, isActive: true, userId });
     }
   },
 });

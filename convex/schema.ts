@@ -3,12 +3,24 @@ import { v } from "convex/values";
 import { authTables } from "@convex-dev/auth/server";
 
 const applicationTables = {
+  settings: defineTable({
+    userId: v.id("users"),
+    shopName: v.string(),
+    gstApplicable: v.boolean(),
+    gstRate: v.number(),
+    gstNumber: v.optional(v.string()),
+    hardwareId: v.optional(v.string()),
+    isPaying: v.optional(v.boolean()),
+  }).index("by_user", ["userId"]),
+
   categories: defineTable({
+    userId: v.id("users"),
     name: v.string(),
     color: v.string(),
-  }),
+  }).index("by_user", ["userId"]),
 
   products: defineTable({
+    userId: v.id("users"),
     name: v.string(),
     sku: v.string(),
     price: v.number(),
@@ -19,13 +31,15 @@ const applicationTables = {
     barcode: v.optional(v.string()),
     isActive: v.boolean(),
   })
-    .index("by_sku", ["sku"])
+    .index("by_user", ["userId"])
+    .index("by_sku", ["userId", "sku"])
     .index("by_category", ["categoryId"])
     .index("by_active", ["isActive"])
     .index("by_barcode", ["barcode"])
     .searchIndex("search_products", { searchField: "name" }),
 
   customers: defineTable({
+    userId: v.id("users"),
     name: v.string(),
     mobile: v.string(),
     email: v.optional(v.string()),
@@ -36,10 +50,12 @@ const applicationTables = {
     lastVisit: v.optional(v.number()),
     notes: v.optional(v.string()),
   })
-    .index("by_mobile", ["mobile"])
+    .index("by_user", ["userId"])
+    .index("by_mobile", ["userId", "mobile"])
     .searchIndex("search_customers", { searchField: "name" }),
 
   sales: defineTable({
+    userId: v.id("users"),
     invoiceNumber: v.string(),
     subtotal: v.number(),
     discount: v.number(),
@@ -56,12 +72,14 @@ const applicationTables = {
     status: v.string(),
     notes: v.optional(v.string()),
   })
-    .index("by_invoice", ["invoiceNumber"])
+    .index("by_user", ["userId"])
+    .index("by_invoice", ["userId", "invoiceNumber"])
     .index("by_cashier", ["cashierId"])
-    .index("by_status", ["status"])
+    .index("by_status", ["userId", "status"])
     .index("by_customer", ["customerId"]),
 
   saleItems: defineTable({
+    userId: v.id("users"),
     saleId: v.id("sales"),
     productId: v.id("products"),
     productName: v.string(),
@@ -71,6 +89,7 @@ const applicationTables = {
     discount: v.number(),
     total: v.number(),
   })
+    .index("by_user", ["userId"])
     .index("by_sale", ["saleId"])
     .index("by_product", ["productId"]),
 };

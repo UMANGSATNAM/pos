@@ -9,6 +9,7 @@ import { Inventory } from "./Inventory";
 import { SalesHistory } from "./SalesHistory";
 import { Dashboard } from "./Dashboard";
 import { Customers } from "./Customers";
+import { Settings } from "./Settings";
 import {
   IconShoppingCart, IconDashboard, IconPackage, IconReceipt, IconUsers,
 } from "./icons";
@@ -94,43 +95,47 @@ function MainApp() {
       desktopIcon: <IconUsers className="w-4 h-4" />,
       mobileIcon: <IconUsers className="w-5 h-5" />,
     },
+    {
+      id: "settings", label: "Settings",
+      desktopIcon: <span className="w-4 h-4">⚙️</span>,
+      mobileIcon: <span className="w-5 h-5">⚙️</span>,
+    },
   ];
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
+    <div className="h-screen flex flex-col overflow-hidden bg-surface">
       {/* Header */}
-      <header className="bg-gradient-to-r from-indigo-700 to-indigo-600 text-white px-3 py-2 flex items-center justify-between shadow-lg flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
-            <IconStoreLogo className="w-5 h-5 text-white" />
+      <header className="bg-white text-accent px-4 py-3 flex items-center justify-between shadow-sm border-b flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 flex items-center justify-center flex-shrink-0 text-primary">
+            <IconStoreLogo className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="font-bold text-sm leading-tight">{BRAND.name}</h1>
-            <p className="text-indigo-200 text-xs hidden sm:block">{BRAND.shortTagline}</p>
+            <h1 className="font-bold text-sm leading-tight">{BRAND.name} SaaS</h1>
           </div>
         </div>
         {/* Desktop nav */}
-        <nav className="hidden md:flex gap-1">
+        <nav className="hidden md:flex gap-1 bg-surface-dark p-1 rounded-secondary border">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+              className={`relative flex items-center gap-1.5 px-4 py-1.5 rounded-secondary text-sm font-medium transition-all ${
                 activeTab === tab.id
-                  ? "bg-white text-indigo-700 shadow-md"
-                  : "text-indigo-100 hover:bg-indigo-600"
+                  ? "bg-white text-primary shadow shadow-sm border border-gray-200"
+                  : "text-secondary hover:text-accent hover:bg-white/50"
               }`}
             >
-              {tab.desktopIcon}
+              <span className={activeTab === tab.id ? "text-primary" : "text-gray-400"}>{tab.desktopIcon}</span>
               <span>{tab.label}</span>
               {tab.id === "customers" && totalDue > 0 && (
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-400 rounded-full" />
+                <span className="ml-1 w-2 h-2 bg-red-400 rounded-full" />
               )}
             </button>
           ))}
         </nav>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-indigo-200 hidden sm:block truncate max-w-[120px]">{user?.email}</span>
+        <div className="flex items-center gap-4">
+          <span className="text-xs text-secondary hidden sm:block truncate max-w-[150px] font-mono">{user?.email}</span>
           <SignOutButton />
         </div>
       </header>
@@ -142,6 +147,7 @@ function MainApp() {
         {activeTab === "inventory" && <Inventory />}
         {activeTab === "sales" && <SalesHistory />}
         {activeTab === "customers" && <Customers />}
+        {activeTab === "settings" && <Settings />}
       </main>
 
       {/* Mobile bottom nav */}
@@ -152,12 +158,12 @@ function MainApp() {
             onClick={() => setActiveTab(tab.id)}
             className={`flex-1 flex flex-col items-center py-2 px-1 text-xs font-medium transition-colors relative ${
               activeTab === tab.id
-                ? "text-indigo-700"
-                : "text-gray-400 hover:text-gray-600"
+                ? "text-primary"
+                : "text-secondary hover:text-accent"
             }`}
           >
             {activeTab === tab.id && (
-              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-indigo-600 rounded-full" />
+              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary rounded-full" />
             )}
             <span className={`mb-0.5 transition-transform ${activeTab === tab.id ? "scale-110" : ""}`}>
               {tab.mobileIcon}

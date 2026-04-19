@@ -27,8 +27,9 @@ export function POSTerminal() {
   const [selectedCategory, setSelectedCategory] = useState<Id<"categories"> | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discount, setDiscount] = useState(0);
-  const [taxRate] = useState(0.18);
-  const [includeGST, setIncludeGST] = useState(true);
+  const settings = useQuery(api.settings.get);
+  const taxRate = settings?.gstRate ? settings.gstRate / 100 : 0;
+  const [includeGST, setIncludeGST] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [amountPaid, setAmountPaid] = useState("");
   const [showCart, setShowCart] = useState(false);
@@ -103,6 +104,12 @@ export function POSTerminal() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [barcodeMode, cart]);
+
+  useEffect(() => {
+    if (settings) {
+      setIncludeGST(settings.gstApplicable ?? false);
+    }
+  }, [settings]);
 
   useEffect(() => {
     if (barcodeMode && barcodeRef.current) barcodeRef.current.focus();
@@ -202,7 +209,7 @@ export function POSTerminal() {
       });
       setCart([]);
       setDiscount(0);
-      setIncludeGST(true);
+      setIncludeGST(settings?.gstApplicable ?? false);
       setAmountPaid("");
       setCustomerId(null);
       setCustomerName("");
@@ -325,9 +332,9 @@ export function POSTerminal() {
                 type="checkbox"
                 checked={includeGST}
                 onChange={(e) => setIncludeGST(e.target.checked)}
-                className="rounded border-gray-300 text-indigo-600"
+                className="rounded border-gray-300 text-indigo-600 focus:ring-primary"
               />
-              <span>GST (18%)</span>
+              <span>GST ({settings?.gstRate ?? 0}%)</span>
             </label>
             <span>{includeGST ? `₹${taxAmount.toFixed(2)}` : "—"}</span>
           </div>
@@ -595,6 +602,8 @@ export function POSTerminal() {
       {showPrint && lastReceipt && (
         <PrintReceipt
           receipt={lastReceipt}
+          shopName={settings?.shopName || "My Shop"}
+          gstNumber={settings?.gstNumber || ""}
           onClose={() => { setShowPrint(false); setLastReceipt(null); }}
         />
       )}
